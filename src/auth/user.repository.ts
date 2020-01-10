@@ -10,10 +10,11 @@ import { AuthCredentialsDto } from "./dto/auth-credentials.dto";
 export class UserRepository extends Repository<User> {
   async signUp(authCredentialsDto: AuthCredentialsDto): Promise<void> {
     const { username, password } = authCredentialsDto;
-    const salt = await bcrypt.genSalt();
+
     const user = new User();
+    user.salt = await bcrypt.genSalt();
     user.username = username;
-    user.password = await this.hashPassword(password, salt);
+    user.password = await this.hashPassword(password, user.salt);
     try {
       await user.save();
     } catch (createUserError) {
@@ -22,6 +23,19 @@ export class UserRepository extends Repository<User> {
       } else {
         throw new InternalServerErrorException();
       }
+    }
+  }
+
+  async validateUserPassword(
+    authCredentialsDto: AuthCredentialsDto
+  ): Promise<string> {
+    const { username, password } = authCredentialsDto;
+    const user = await this.findOne({ username });
+
+    if (user && (await user.validatePassword(password))) {
+      return user.username;
+    } else {
+      return null;
     }
   }
 
