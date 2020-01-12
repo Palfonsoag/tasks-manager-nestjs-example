@@ -1,4 +1,5 @@
 import { Repository, EntityRepository } from "typeorm";
+import { Logger, InternalServerErrorException } from "@nestjs/common";
 import { Task } from "./task.entity";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { TaskStatus } from "./task-status.enum";
@@ -7,6 +8,8 @@ import { User } from "src/auth/user.entity";
 
 @EntityRepository(Task)
 export class TaskRepository extends Repository<Task> {
+  private logger = new Logger("TaskRepository");
+
   async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
     const { title, description } = createTaskDto;
     const task = new Task();
@@ -14,9 +17,20 @@ export class TaskRepository extends Repository<Task> {
     task.description = description;
     task.status = TaskStatus.OPEN;
     task.user = user;
-    await task.save();
-    delete task.user;
-    return task;
+
+    try {
+      await task.save();
+      delete task.user;
+      return task;
+    } catch (error) {
+      this.logger.error(
+        `User "${user.username}" creating a new task. Data: ${JSON.stringify(
+          createTaskDto
+        )}`,
+        error.stack
+      );
+      throw new InternalServerErrorException();
+    }
   }
 
   async getTasks(filterDto: GetTasksFilterDto, user: User): Promise<Task[]> {
@@ -33,8 +47,17 @@ export class TaskRepository extends Repository<Task> {
         { search: `%${search}%` }
       );
     }
-
-    const tasks = await query.getMany();
-    return tasks;
+    try {
+      const tasks = await query.getMany();
+      return tasks;
+    } catch (error) {
+      this.logger.error(
+        `User "${user.username}" creating a new task. filters: ${JSON.stringify(
+          filterDto
+        )}`,
+        error.stack
+      );
+      throw new InternalServerErrorException();
+    }
   }
 }
