@@ -1,0 +1,8 @@
+server:
+  origin: http://task-manager-example-front-delete.s3-website.us-east-2.amazonaws.com
+
+db:
+  synchronize: false
+
+jwt:
+  secret: "topSecret51"
